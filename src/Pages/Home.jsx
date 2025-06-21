@@ -213,7 +213,7 @@ const Home = () => {
               data-aos-delay="200"
             >
               <div className="space-y-0 sm:space-y-3">
-                <StatusBadge />
+                {/* <StatusBadge /> */}
                 <MainTitle />
 
                 {/* Typing Effect */}

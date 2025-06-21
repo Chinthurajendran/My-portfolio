@@ -1,38 +1,50 @@
-"use client";
+import React, { useEffect, useState, useCallback } from "react"
+import { db, collection } from "../firebase"
+import { getDocs } from "firebase/firestore"
+import PropTypes from "prop-types"
+// import SwipeableViews from "react-swipeable-views"
+import SwipeableViews from 'react18-swipeable-views';
 
-import React, { useEffect, useState, useCallback, useRef } from "react";
-import { Code, Award, Boxes } from "lucide-react";
+import { useTheme } from "@mui/material/styles"
+import AppBar from "@mui/material/AppBar"
+import Tabs from "@mui/material/Tabs"
+import Tab from "@mui/material/Tab"
+import Typography from "@mui/material/Typography"
+import Box from "@mui/material/Box"
+import CardProject from "../components/CardProject"
+import TechStackIcon from "../components/TechStackIcon"
+import AOS from "aos"
+import "aos/dist/aos.css"
+import Certificate from "../components/Certificate"
+import { Code, Award, Boxes } from "lucide-react"
 
-// Mock components — update these to your real ones
-const CardProject = ({ Img, Title, Description, Link }) => (
-  <div className="bg-white/5 rounded-lg p-4 border border-white/10">
-    <img src={Img} alt={Title} className="aspect-video rounded mb-3 object-cover" />
-    <h3 className="text-white font-semibold mb-2">{Title}</h3>
-    <p className="text-slate-400 text-sm">{Description}</p>
-  </div>
-);
-
-const Certificate = ({ ImgSertif }) => (
-  <div className="bg-white/5 rounded-lg p-4 border border-white/10">
-    <img
-      src={ImgSertif}
-      alt="Certificate"
-      className="aspect-[4/3] rounded object-cover"
-    />
-  </div>
-);
-
-const TechStackIcon = ({ IconSrc, Language }) => (
-  <div className="flex flex-col items-center p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-all duration-300">
-    <img src={IconSrc} alt={Language} className="w-12 h-12 mb-2 object-contain" />
-    <span className="text-slate-300 text-xs text-center">{Language}</span>
-  </div>
-);
-
+// Separate ShowMore/ShowLess button component
 const ToggleButton = ({ onClick, isShowingMore }) => (
   <button
     onClick={onClick}
-    className="px-3 py-1.5 text-slate-300 hover:text-white text-sm font-medium transition-all duration-300 ease-in-out flex items-center gap-2 bg-white/5 hover:bg-white/10 rounded-md border border-white/10 hover:border-white/20 backdrop-blur-sm group relative overflow-hidden"
+    className="
+      px-3 py-1.5
+      text-slate-300 
+      hover:text-white 
+      text-sm 
+      font-medium 
+      transition-all 
+      duration-300 
+      ease-in-out
+      flex 
+      items-center 
+      gap-2
+      bg-white/5 
+      hover:bg-white/10
+      rounded-md
+      border 
+      border-white/10
+      hover:border-white/20
+      backdrop-blur-sm
+      group
+      relative
+      overflow-hidden
+    "
   >
     <span className="relative z-10 flex items-center gap-2">
       {isShowingMore ? "See Less" : "See More"}
@@ -46,137 +58,57 @@ const ToggleButton = ({ onClick, isShowingMore }) => (
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
-        className={`transition-transform duration-300 ${
-          isShowingMore ? "group-hover:-translate-y-0.5" : "group-hover:translate-y-0.5"
-        }`}
+        className={`
+          transition-transform 
+          duration-300 
+          ${
+            isShowingMore
+              ? "group-hover:-translate-y-0.5"
+              : "group-hover:translate-y-0.5"
+          }
+        `}
       >
-        <polyline points={isShowingMore ? "18 15 12 9 6 15" : "6 9 12 15 18 9"} />
+        <polyline
+          points={isShowingMore ? "18 15 12 9 6 15" : "6 9 12 15 18 9"}
+        ></polyline>
       </svg>
     </span>
-    <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-purple-500/50 transition-all duration-300 group-hover:w-full" />
+    <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-purple-500/50 transition-all duration-300 group-hover:w-full"></span>
   </button>
-);
+)
 
-const CustomSwipeableViews = ({ children, index, onChangeIndex }) => {
-  const containerRef = useRef(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [startX, setStartX] = useState(0);
-  const [currentTranslate, setCurrentTranslate] = useState(0);
-  const [prevTranslate, setPrevTranslate] = useState(0);
-
-  useEffect(() => {
-    const pos = -index * 100;
-    setCurrentTranslate(pos);
-    setPrevTranslate(pos);
-  }, [index]);
-
-  const handleStart = (clientX) => {
-    setIsDragging(true);
-    setStartX(clientX);
-  };
-  const handleMove = (clientX) => {
-    if (!isDragging) return;
-    const diff = clientX - startX;
-    setCurrentTranslate(prevTranslate + (diff / window.innerWidth) * 100);
-  };
-  const handleEnd = () => {
-    if (!isDragging) return;
-    setIsDragging(false);
-    const diff = currentTranslate - prevTranslate;
-    const threshold = 20;
-    if (Math.abs(diff) > threshold) {
-      onChangeIndex(diff > 0 && index > 0 ? index - 1 : index < children.length - 1 ? index + 1 : index);
-    }
-    const pos = -index * 100;
-    setCurrentTranslate(pos);
-    setPrevTranslate(pos);
-  };
-
-  return (
-    <div
-      ref={containerRef}
-      className="overflow-hidden w-full"
-      onTouchStart={(e) => handleStart(e.touches[0].clientX)}
-      onTouchMove={(e) => handleMove(e.touches[0].clientX)}
-      onTouchEnd={handleEnd}
-      onMouseDown={(e) => (e.preventDefault(), handleStart(e.clientX))}
-      onMouseMove={(e) => handleMove(e.clientX)}
-      onMouseUp={handleEnd}
-      onMouseLeave={handleEnd}
-    >
-      <div
-        className="flex w-full transition-transform duration-300 ease-out"
-        style={{ transform: `translateX(${isDragging ? currentTranslate : -index * 100}%)`, cursor: isDragging ? "grabbing" : "grab" }}
-      >
-        {children.map((child, i) => (
-          <div key={i} className="w-full flex-shrink-0">
-            {child}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-function TabPanel({ children, index, value }) {
+function TabPanel({ children, value, index, ...other }) {
   return (
     <div
       role="tabpanel"
       hidden={value !== index}
       id={`full-width-tabpanel-${index}`}
       aria-labelledby={`full-width-tab-${index}`}
-      className="p-1 sm:p-3"
+      {...other}
     >
-      {children}
+      {value === index && (
+        <Box sx={{ p: { xs: 1, sm: 3 } }}>
+          <Typography>{children}</Typography>
+        </Box>
+      )}
     </div>
-  );
+  )
+}
+
+TabPanel.propTypes = {
+  children: PropTypes.node,
+  index: PropTypes.number.isRequired,
+  value: PropTypes.number.isRequired,
 }
 
 function a11yProps(index) {
   return {
     id: `full-width-tab-${index}`,
     "aria-controls": `full-width-tabpanel-${index}`,
-  };
+  }
 }
 
-export default function FullWidthTabs() {
-  const [value, setValue] = useState(0);
-  const [projects, setProjects] = useState([]);
-  const [certificates, setCertificates] = useState([]);
-  const [showAllProjects, setShowAllProjects] = useState(false);
-  const [showAllCertificates, setShowAllCertificates] = useState(false);
-  const [initialItems, setInitialItems] = useState(6);
-
-  useEffect(() => {
-    const handleResize = () => setInitialItems(window.innerWidth < 768 ? 4 : 6);
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  useEffect(() => {
-    const mockProjects = Array.from({ length: 12 }, (_, i) => ({
-      id: i,
-      Img: `https://picsum.photos/id/${i + 10}/400/225`,
-      Title: `Project ${i + 1}`,
-      Description: `Description for project ${i + 1}`,
-      Link: "#",
-    }));
-    const mockCertificates = Array.from({ length: 9 }, (_, i) => ({
-      Img: `https://picsum.photos/id/${i + 100}/400/300`,
-    }));
-    setProjects(mockProjects);
-    setCertificates(mockCertificates);
-  }, []);
-
-  // const techStacks = [
-  //   { icon: "/icons/html.svg", language: "HTML" },
-  //   { icon: "/icons/css.svg", language: "CSS" },
-  //   { icon: "/icons/javascript.svg", language: "JavaScript" },
-  //   { icon: "/icons/reactjs.svg", language: "ReactJS" },
-  //   // ...add the rest here
-  // ];
-  const techStacks = [
+const techStacks = [
   { icon: "html.svg", language: "HTML" },
   { icon: "css.svg", language: "CSS" },
   { icon: "Python.svg", language: "Python" },
@@ -197,81 +129,318 @@ export default function FullWidthTabs() {
   { icon: "docker.svg", language: "docker" },
 ]
 
-  const displayedProjects = showAllProjects ? projects : projects.slice(0, initialItems);
-  const displayedCertificates = showAllCertificates ? certificates : certificates.slice(0, initialItems);
+export default function FullWidthTabs() {
+  const theme = useTheme()
+  const [value, setValue] = useState(0)
+  const [projects, setProjects] = useState([])
+  const [certificates, setCertificates] = useState([])
+  const [showAllProjects, setShowAllProjects] = useState(false)
+  const [showAllCertificates, setShowAllCertificates] = useState(false)
+  const isMobile = window.innerWidth < 768
+  const initialItems = isMobile ? 4 : 6
 
-  const toggle = (t) => (t === "projects" ? setShowAllProjects((p) => !p) : setShowAllCertificates((p) => !p));
+  useEffect(() => {
+    // Initialize AOS once
+    AOS.init({
+      once: false, // This will make animations occur only once
+    })
+  }, [])
+
+  const fetchData = useCallback(async () => {
+    try {
+      const projectCollection = collection(db, "projects")
+      const certificateCollection = collection(db, "certificates")
+
+      const [projectSnapshot, certificateSnapshot] = await Promise.all([
+        getDocs(projectCollection),
+        getDocs(certificateCollection),
+      ])
+
+      const projectData = projectSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+        TechStack: doc.data().TechStack || [],
+      }))
+
+      const certificateData = certificateSnapshot.docs.map((doc) => doc.data())
+
+      setProjects(projectData)
+      setCertificates(certificateData)
+
+      // Store in localStorage
+      localStorage.setItem("projects", JSON.stringify(projectData))
+      localStorage.setItem("certificates", JSON.stringify(certificateData))
+    } catch (error) {
+      console.error("Error fetching data:", error)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
+
+  const handleChange = (event, newValue) => {
+    setValue(newValue)
+  }
+
+  const toggleShowMore = useCallback((type) => {
+    if (type === "projects") {
+      setShowAllProjects((prev) => !prev)
+    } else {
+      setShowAllCertificates((prev) => !prev)
+    }
+  }, [])
+
+  const displayedProjects = showAllProjects
+    ? projects
+    : projects.slice(0, initialItems)
+  const displayedCertificates = showAllCertificates
+    ? certificates
+    : certificates.slice(0, initialItems)
 
   return (
-    <div className="md:px-[10%] px-[5%] w-full mt-[3rem] sm:mt-0 bg-[#030014] overflow-hidden" id="Portfolio">
-      <div className="text-center pb-10">
-        <h2 className="inline-block text-3xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-indigo-500">
-          Portfolio Showcase
+    <div
+      className="md:px-[10%] px-[5%] w-full sm:mt-0 mt-[3rem] bg-[#030014] overflow-hidden"
+      id="Portofolio"
+    >
+      {/* Header section - unchanged */}
+      <div
+        className="text-center pb-10"
+        data-aos="fade-up"
+        data-aos-duration="1000"
+      >
+        <h2 className="inline-block text-3xl md:text-5xl font-bold text-center mx-auto text-transparent bg-clip-text bg-gradient-to-r from-[#6366f1] to-[#a855f7]">
+          <span
+            style={{
+              color: "#6366f1",
+              backgroundImage:
+                "linear-gradient(45deg, #6366f1 10%, #a855f7 93%)",
+              WebkitBackgroundClip: "text",
+              backgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}
+          >
+            Portfolio Showcase
+          </span>
         </h2>
         <p className="text-slate-400 max-w-2xl mx-auto text-sm md:text-base mt-2">
-          Explore my journey through projects, certifications, and technical expertise.
+          Explore my journey through projects, certifications, and technical
+          expertise. Each section represents a milestone in my continuous
+          learning path.
         </p>
       </div>
 
-      <div className="bg-transparent border border-white/10 rounded-[20px] relative overflow-hidden md:px-4" style={{ backdropFilter: "blur(10px)", background: "rgba(255,255,255,0.03)" }}>
-        <div className="flex w-full min-h-[70px]">
-          {[
-            { icon: Code, label: "Projects", idx: 0 },
-            { icon: Award, label: "Certificates", idx: 1 },
-            { icon: Boxes, label: "Tech Stack", idx: 2 },
-          ].map(({ icon: Icon, label, idx }) => (
-            <button
-              key={idx}
-              onClick={() => setValue(idx)}
-              className={`flex-1 flex flex-col items-center justify-center text-sm md:text-base font-semibold transition-all duration-300 py-5 mx-2 rounded-xl ${
-                value === idx
-                  ? "text-white bg-gradient-to-br from-purple-500/20 to-blue-500/20 shadow-purple-500/20 shadow-lg"
-                  : "text-slate-400 hover:text-white hover:bg-purple-500/10 hover:-translate-y-0.5"
-              }`}
-              {...a11yProps(idx)}
-            >
-              <Icon className={`mb-2 w-5 h-5 transition-all duration-300 ${value === idx ? "text-purple-300 scale-110" : ""}`} />
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <Box sx={{ width: "100%" }}>
+        {/* AppBar and Tabs section - unchanged */}
+        <AppBar
+          position="static"
+          elevation={0}
+          sx={{
+            bgcolor: "transparent",
+            border: "1px solid rgba(255, 255, 255, 0.1)",
+            borderRadius: "20px",
+            position: "relative",
+            overflow: "hidden",
+            "&::before": {
+              content: '""',
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background:
+                "linear-gradient(180deg, rgba(139, 92, 246, 0.03) 0%, rgba(59, 130, 246, 0.03) 100%)",
+              backdropFilter: "blur(10px)",
+              zIndex: 0,
+            },
+          }}
+          className="md:px-4"
+        >
+          {/* Tabs remain unchanged */}
+          <Tabs
+            value={value}
+            onChange={handleChange}
+            textColor="secondary"
+            indicatorColor="secondary"
+            variant="fullWidth"
+            sx={{
+              // Existing styles remain unchanged
+              minHeight: "70px",
+              "& .MuiTab-root": {
+                fontSize: { xs: "0.9rem", md: "1rem" },
+                fontWeight: "600",
+                color: "#94a3b8",
+                textTransform: "none",
+                transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+                padding: "20px 0",
+                zIndex: 1,
+                margin: "8px",
+                borderRadius: "12px",
+                "&:hover": {
+                  color: "#ffffff",
+                  backgroundColor: "rgba(139, 92, 246, 0.1)",
+                  transform: "translateY(-2px)",
+                  "& .lucide": {
+                    transform: "scale(1.1) rotate(5deg)",
+                  },
+                },
+                "&.Mui-selected": {
+                  color: "#fff",
+                  background:
+                    "linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(59, 130, 246, 0.2))",
+                  boxShadow: "0 4px 15px -3px rgba(139, 92, 246, 0.2)",
+                  "& .lucide": {
+                    color: "#a78bfa",
+                  },
+                },
+              },
+              "& .MuiTabs-indicator": {
+                height: 0,
+              },
+              "& .MuiTabs-flexContainer": {
+                gap: "8px",
+              },
+            }}
+          >
+            <Tab
+              icon={
+                <Code className="mb-2 w-5 h-5 transition-all duration-300" />
+              }
+              label="Projects"
+              {...a11yProps(0)}
+            />
+            <Tab
+              icon={
+                <Award className="mb-2 w-5 h-5 transition-all duration-300" />
+              }
+              label="Certificates"
+              {...a11yProps(1)}
+            />
+            <Tab
+              icon={
+                <Boxes className="mb-2 w-5 h-5 transition-all duration-300" />
+              }
+              label="Tech Stack"
+              {...a11yProps(2)}
+            />
+          </Tabs>
+        </AppBar>
 
-      <CustomSwipeableViews index={value} onChangeIndex={setValue}>
-        <TabPanel value={value} index={0}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {displayedProjects.map((p) => (
-              <CardProject key={p.id} {...p} />
-            ))}
-          </div>
-          {projects.length > initialItems && (
-            <div className="mt-6 flex justify-start">
-              <ToggleButton onClick={() => toggle("projects")} isShowingMore={showAllProjects} />
+        <SwipeableViews
+          axis={theme.direction === "rtl" ? "x-reverse" : "x"}
+          index={value}
+          onChangeIndex={setValue}
+        >
+          <TabPanel value={value} index={0} dir={theme.direction}>
+            <div className="container mx-auto flex justify-center items-center overflow-hidden">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 2xl:grid-cols-3 gap-5">
+                {displayedProjects.map((project, index) => (
+                  <div
+                    key={project.id || index}
+                    data-aos={
+                      index % 3 === 0
+                        ? "fade-up-right"
+                        : index % 3 === 1
+                        ? "fade-up"
+                        : "fade-up-left"
+                    }
+                    data-aos-duration={
+                      index % 3 === 0
+                        ? "1000"
+                        : index % 3 === 1
+                        ? "1200"
+                        : "1000"
+                    }
+                  >
+                    <CardProject
+                      Img={project.Img}
+                      Title={project.Title}
+                      Description={project.Description}
+                      Link={project.Link}
+                      id={project.id}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
-          )}
-        </TabPanel>
+            {projects.length > initialItems && (
+              <div className="mt-6 w-full flex justify-start">
+                <ToggleButton
+                  onClick={() => toggleShowMore("projects")}
+                  isShowingMore={showAllProjects}
+                />
+              </div>
+            )}
+          </TabPanel>
 
-        <TabPanel value={value} index={1}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
-            {displayedCertificates.map((c, i) => (
-              <Certificate key={i} ImgSertif={c.Img} />
-            ))}
-          </div>
-          {certificates.length > initialItems && (
-            <div className="mt-6 flex justify-start">
-              <ToggleButton onClick={() => toggle("certificates")} isShowingMore={showAllCertificates} />
+          <TabPanel value={value} index={1} dir={theme.direction}>
+            <div className="container mx-auto flex justify-center items-center overflow-hidden">
+              <div className="grid grid-cols-1 md:grid-cols-3 md:gap-5 gap-4">
+                {displayedCertificates.map((certificate, index) => (
+                  <div
+                    key={index}
+                    data-aos={
+                      index % 3 === 0
+                        ? "fade-up-right"
+                        : index % 3 === 1
+                        ? "fade-up"
+                        : "fade-up-left"
+                    }
+                    data-aos-duration={
+                      index % 3 === 0
+                        ? "1000"
+                        : index % 3 === 1
+                        ? "1200"
+                        : "1000"
+                    }
+                  >
+                    <Certificate ImgSertif={certificate.Img} />
+                  </div>
+                ))}
+              </div>
             </div>
-          )}
-        </TabPanel>
+            {certificates.length > initialItems && (
+              <div className="mt-6 w-full flex justify-start">
+                <ToggleButton
+                  onClick={() => toggleShowMore("certificates")}
+                  isShowingMore={showAllCertificates}
+                />
+              </div>
+            )}
+          </TabPanel>
 
-        <TabPanel value={value} index={2}>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-5 lg:gap-8 pb-[5%]">
-            {techStacks.map((s, i) => (
-              <TechStackIcon key={i} IconSrc={s.icon} Language={s.language} />
-            ))}
-          </div>
-        </TabPanel>
-      </CustomSwipeableViews>
+          <TabPanel value={value} index={2} dir={theme.direction}>
+            <div className="container mx-auto flex justify-center items-center overflow-hidden pb-[5%]">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 lg:gap-8 gap-5">
+                {techStacks.map((stack, index) => (
+                  <div
+                    key={index}
+                    data-aos={
+                      index % 3 === 0
+                        ? "fade-up-right"
+                        : index % 3 === 1
+                        ? "fade-up"
+                        : "fade-up-left"
+                    }
+                    data-aos-duration={
+                      index % 3 === 0
+                        ? "1000"
+                        : index % 3 === 1
+                        ? "1200"
+                        : "1000"
+                    }
+                  >
+                    <TechStackIcon
+                      TechStackIcon={stack.icon}
+                      Language={stack.language}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </TabPanel>
+        </SwipeableViews>
+      </Box>
     </div>
-  );
+  )
 }
